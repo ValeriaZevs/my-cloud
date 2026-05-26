@@ -1,0 +1,15 @@
+# Фронтенд
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Бэкенд
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/db.sqlite3
+backend/.env
+
+# Системные файлы
+.DS_Store
+Thumbs.db

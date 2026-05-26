@@ -1,20 +1,21 @@
-from django.contrib.auth import authenticate, login, logout
-from rest_framework import status
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from .serializers import UserSerializer
-import uuid
 import os
+import uuid
 from django.conf import settings
-from rest_framework.permissions import IsAuthenticated
-from .models import File
-from .serializers import FileSerializer
 from django.utils import timezone
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
-from rest_framework.permissions import AllowAny
+from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.db.models import Count, Sum
-from rest_framework.permissions import IsAdminUser
+
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
+
+from .models import File
+from .serializers import UserSerializer, FileSerializer
+
+User = get_user_model()
 
 
 class RegisterView(APIView):
@@ -147,23 +148,57 @@ class FileShareDownloadView(APIView):
 
         return Response({"error": "Файл не найден"}, status=status.HTTP_404_NOT_FOUND)
 
+
 class AdminUserListView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
         users = User.objects.annotate(
-            files_count=Count('files'),
+            file_count=Count('files'),
             total_size=Sum('files__size')
         )
-        serializer = UserAdminSerializer(users, many=True)
-        return Response(serializer.data)
+        data = []
+        for u in users:
+            data.append({
+                'id': u.id,
+                'username': u.username,
+                'email': u.email,
+                'is_staff': u.is_staff,
+                'file_count': u.file_count or 0,
+                'total_size': u.total_size or 0,
+            })
+        return Response(data)
+
 
 class AdminUserDeleteView(APIView):
     permission_classes = [IsAdminUser]
 
     def delete(self, request, pk):
         user = get_object_or_404(User, pk=pk)
+
         if user == request.user:
             return Response({"error": "Нельзя удалить самого себя"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user.is_staff:
+            return Response({"error": "Нельзя удалить администратора"}, status=status.HTTP_403_FORBIDDEN)
+
         user.delete()
         return Response({"message": "Пользователь удален"}, status=status.HTTP_204_NO_CONTENT)
+
+
+class FileShareLinkView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        file_obj = get_object_or_404(File, pk=pk, user=request.user)
+
+        if not getattr(file_obj, 'share_hash', None):
+            file_obj.share_hash = uuid.uuid4().hex
+            file_obj.save()
+
+        share_url = f"http://localhost:8000/api/files/share/{file_obj.share_hash}/"
+
+        return Response({
+            "url": share_url,
+            "share_hash": file_obj.share_hash
+        }, status=status.HTTP_200_OK)
