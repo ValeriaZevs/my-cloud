@@ -1,4 +1,4 @@
-const API_URL = 'http://194.67.92.55:3000/';
+const API_URL = 'http://194.67.92.55:8000/';
 
 const getCsrfToken = () => {
   const value = `; ${document.cookie}`;
