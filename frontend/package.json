@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "start": "npx webpack serve --mode development --host 0.0.0.0 --port 3000 --disable-host-check",
+    "start": "node node_modules/webpack-dev-server/bin/webpack-dev-server.js --mode development --host 0.0.0.0 --port 3000 --disable-host-check",
     "build": "npx webpack --mode production"
   },
   "dependencies": {
