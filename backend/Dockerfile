@@ -1,11 +1,5 @@
-FROM node:18
-
+FROM python:3.12-slim
 WORKDIR /app
-
-COPY frontend/package.json ./
-
-RUN npm install
-
-COPY frontend/ .
-
-CMD ["npm", "start"]
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
