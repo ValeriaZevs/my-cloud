@@ -196,7 +196,7 @@ class FileShareLinkView(APIView):
             file_obj.share_hash = uuid.uuid4().hex
             file_obj.save()
 
-        share_url = f"http://localhost:8000/api/files/share/{file_obj.share_hash}/"
+        share_url = f"http://194.67.92.55:8000/api/files/share/{file_obj.share_hash}/"
 
         return Response({
             "url": share_url,

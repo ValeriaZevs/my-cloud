@@ -79,7 +79,7 @@ const DashboardPage = () => {
   const handleShare = async (id) => {
     try {
       const data = await getShareLink(id);
-      const shareUrl = data.url || `http://localhost:8000/api/files/share/${data.share_hash}/`;
+      const shareUrl = data.url || `http://194.67.92.55:8000/api/files/share/${data.share_hash}/`;
       
       await navigator.clipboard.writeText(shareUrl);
       alert('Специальная ссылка скопирована в буфер обмена!\n' + shareUrl);
@@ -91,7 +91,7 @@ const DashboardPage = () => {
   const handleDownload = async (id, name) => {
     // Безопасное скачивание с передачей куки
     try {
-      const response = await fetch(`http://localhost:8000/api/files/${id}/download/`, {
+      const response = await fetch(`http://194.67.92.55:8000/api/files/${id}/download/`, {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Ошибка скачивания');
