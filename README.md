@@ -37,6 +37,6 @@
 
 Не останавливая работу сервера, откройте новое окно терминала и выполните команду:
 
-docker-compose exec backend python manage.py createsuperuser
+`docker-compose exec backend python manage.py createsuperuser`
 
 Следуйте инструкциям в терминале (введите логин, email и пароль). После этого вы сможете авторизоваться на сайте под этими данными и получить доступ к админке.
