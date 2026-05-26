@@ -35,10 +35,11 @@ services:
   frontend:
     image: node:18-alpine
     working_dir: /app
-    volumes:
-      - ./frontend:/app
     ports:
       - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  
     command: sh -c "npm install && npm start"
 
 volumes:
