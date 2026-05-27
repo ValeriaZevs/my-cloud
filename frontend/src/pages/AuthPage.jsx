@@ -20,10 +20,14 @@ const AuthPage = () => {
 
     try {
       if (isLogin) {
+        const data = await loginUser(username, password);
+        if (data.error) throw new Error(data.error);
+        
         dispatch(loginSuccess({
           username: data.username,
           isAdmin: data.is_staff 
         }));
+        navigate('/dashboard'); 
       } else {
         const data = await registerUser(username, email, password);
         if (data.username) {
