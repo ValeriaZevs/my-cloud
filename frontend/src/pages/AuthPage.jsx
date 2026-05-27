@@ -14,9 +14,28 @@ const AuthPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  const validateRegistration = () => {
+  const loginRegex = /^[a-zA-Z][a-zA-Z0-9]{3,19}$/;
+  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*_=+-]).{6,}$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!loginRegex.test(username)) return "Логин должен быть от 4 до 20 символов, начинаться с буквы и содержать только латиницу и цифры.";
+  if (!emailRegex.test(email)) return "Неверный формат email.";
+  if (!passwordRegex.test(password)) return "Пароль (мин. 6 символов) должен содержать 1 заглавную букву, 1 цифру и 1 спецсимвол.";
+  return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!isLogin) {
+      const validationError = validateRegistration();
+      if (validationError) {
+        setError(validationError);
+        return; 
+      }
+    }
 
     try {
       if (isLogin) {
@@ -34,7 +53,8 @@ const AuthPage = () => {
           setIsLogin(true); 
           setError('Регистрация успешна! Теперь войдите.');
         } else {
-          throw new Error(JSON.stringify(data)); 
+          const errorMsg = data.username ? 'Ошибка регистрации' : JSON.stringify(data);
+          throw new Error(errorMsg); 
         }
       }
     } catch (err) {
