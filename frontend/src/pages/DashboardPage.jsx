@@ -81,10 +81,15 @@ const DashboardPage = () => {
       const data = await getShareLink(id);
       const shareUrl = data.url || `http://194.67.92.55:8000/api/files/share/${data.share_hash}/`;
       
-      await navigator.clipboard.writeText(shareUrl);
-      alert('Специальная ссылка скопирована в буфер обмена!\n' + shareUrl);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareUrl);
+        alert('Специальная ссылка скопирована в буфер обмена!\n' + shareUrl);
+      } else {
+        prompt('Ссылка сгенерирована! Нажмите Ctrl+C (или Cmd+C), чтобы скопировать:', shareUrl);
+      }
     } catch (error) {
-      alert('Ошибка при генерации ссылки');
+      console.error("Ошибка шаринга:", error);
+      alert('Ошибка при генерации ссылки. Проверьте консоль (F12).');
     }
   };
 
