@@ -110,9 +110,8 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://194.67.92.55:3000", 
+    "http://194.67.92.55:8000",
 ]

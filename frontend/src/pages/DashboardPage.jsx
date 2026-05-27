@@ -88,25 +88,8 @@ const DashboardPage = () => {
     }
   };
 
-  const handleDownload = async (id, name) => {
-    // Безопасное скачивание с передачей куки
-    try {
-      const response = await fetch(`http://194.67.92.55:8000/api/files/${id}/download/`, {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Ошибка скачивания');
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch (error) {
-      alert(error.message);
-    }
+  const handleDownload = (id, name) => {
+    window.location.href = `http://194.67.92.55:8000/api/files/${id}/download/`;
   };
 
   return (
