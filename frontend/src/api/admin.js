@@ -25,3 +25,28 @@ export const deleteUser = async (userId) => {
   if (!response.ok) throw new Error('Ошибка при удалении пользователя');
   return true;
 };
+
+export const getFiles = async (userId = null) => {
+  const url = userId 
+    ? `http://194.67.92.55:8000/api/files/?user_id=${userId}`
+    : `http://194.67.92.55:8000/api/files/`;
+    
+  const response = await fetch(url, { credentials: 'include' });
+  if (!response.ok) throw new Error('Ошибка при получении файлов');
+  return response.json();
+};
+
+export const toggleAdminStatus = async (userId) => {
+  const response = await fetch(`http://194.67.92.55:8000/api/admin/users/${userId}/toggle_admin/`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include'
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Ошибка изменения статуса администратора');
+  }
+  return response.json();
+};

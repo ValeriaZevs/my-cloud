@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { logoutSuccess } from '../store/authSlice';
 import { logoutUser, getFiles, uploadFile, deleteFile, updateFile, getShareLink } from '../api/files';
 
@@ -13,6 +13,9 @@ const DashboardPage = () => {
   const [editingFileId, setEditingFileId] = useState(null);
   const [newFileName, setNewFileName] = useState('');
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const targetUserId = searchParams.get('user_id');
+
   const username = useSelector((state) => state.auth.username);
   const isAdmin = useSelector((state) => state.auth.isAdmin); 
   const dispatch = useDispatch();
@@ -20,7 +23,7 @@ const DashboardPage = () => {
 
   const fetchFiles = async () => {
     try {
-      const data = await getFiles();
+      const data = await getFiles(targetUserId);
       setFiles(data);
     } catch (error) {
       console.error('Ошибка загрузки списка файлов:', error);
@@ -29,7 +32,7 @@ const DashboardPage = () => {
 
   useEffect(() => {
     fetchFiles();
-  }, []);
+  }, [targetUserId]);
 
   const handleLogout = async () => {
     await logoutUser();
@@ -117,21 +120,42 @@ const DashboardPage = () => {
       </header>
 
       <main>
-        {/* Форма загрузки */}
-        <div style={{ background: '#f5f5f5', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-          <h3 style={{ marginTop: 0 }}>Загрузить новый файл</h3>
-          {uploadError && <div style={{ color: 'red', marginBottom: '10px' }}>{uploadError}</div>}
-          <form onSubmit={handleUpload} style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <input id="file-input" type="file" onChange={(e) => setSelectedFile(e.target.files[0])} style={{ flex: '1 1 200px' }} />
-            <input type="text" placeholder="Комментарий (необязательно)" value={comment} onChange={(e) => setComment(e.target.value)} style={{ padding: '8px', flex: '2 1 250px', borderRadius: '4px', border: '1px solid #ccc' }} />
-            <button type="submit" style={{ padding: '8px 20px', background: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Загрузить</button>
-          </form>
-        </div>
+        {/* Информационный баннер, который видит только админ в чужом хранилище */}
+        {targetUserId && isAdmin && (
+          <div style={{ background: '#e0f7fa', padding: '15px', borderRadius: '5px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: '#006064', fontWeight: 'bold' }}>
+              ⚠️ Режим просмотра чужого хранилища (User ID: {targetUserId})
+            </span>
+            <button 
+              onClick={() => {
+                // Удаляем параметр user_id из адресной строки
+                searchParams.delete('user_id');
+                setSearchParams(searchParams);
+              }}
+              style={{ padding: '5px 10px', background: '#00838f', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
+            >
+              Вернуться в свое облако
+            </button>
+          </div>
+        )}
+
+        {/* Форма загрузки (скрываем для чужого хранилища, чтобы админ случайно туда ничего не загрузил) */}
+        {!targetUserId && (
+          <div style={{ background: '#f5f5f5', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+            <h3 style={{ marginTop: 0 }}>Загрузить новый файл</h3>
+            {uploadError && <div style={{ color: 'red', marginBottom: '10px' }}>{uploadError}</div>}
+            <form onSubmit={handleUpload} style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input id="file-input" type="file" onChange={(e) => setSelectedFile(e.target.files[0])} style={{ flex: '1 1 200px' }} />
+              <input type="text" placeholder="Комментарий (необязательно)" value={comment} onChange={(e) => setComment(e.target.value)} style={{ padding: '8px', flex: '2 1 250px', borderRadius: '4px', border: '1px solid #ccc' }} />
+              <button type="submit" style={{ padding: '8px 20px', background: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Загрузить</button>
+            </form>
+          </div>
+        )}
 
         {/* Список файлов */}
-        <h3>Ваши файлы:</h3>
+        <h3>{targetUserId ? 'Файлы пользователя:' : 'Ваши файлы:'}</h3>
         {files.length === 0 ? (
-          <p style={{ color: '#777' }}>Хранилище пусто. Загрузите свой первый файл!</p>
+          <p style={{ color: '#777' }}>Хранилище пусто.</p>
         ) : (
           <ul style={{ listStyle: 'none', padding: 0 }}>
             {files.map((file) => (

@@ -202,3 +202,93 @@ class FileShareLinkView(APIView):
             "url": share_url,
             "share_hash": file_obj.share_hash
         }, status=status.HTTP_200_OK)
+
+class FileListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_id = request.query_params.get('user_id')
+        
+        # Если запрашивает администратор и передан ID конкретного пользователя
+        if request.user.is_staff and user_id:
+            files = File.objects.filter(user_id=user_id)
+        else:
+            # Обычный пользователь видит только свои файлы
+            files = File.objects.filter(user=request.user)
+            
+        serializer = FileSerializer(files, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        pass
+
+
+class FileDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        if request.user.is_staff:
+            file_obj = get_object_or_404(File, pk=pk)
+        else:
+            file_obj = get_object_or_404(File, pk=pk, user=request.user)
+
+        if 'original_name' in request.data:
+            file_obj.original_name = request.data['original_name']
+        if 'comment' in request.data:
+            file_obj.comment = request.data['comment']
+
+        file_obj.save()
+        return Response(FileSerializer(file_obj).data, status=status.HTTP_200_OK)
+
+    def delete(self, request, pk):
+        if request.user.is_staff:
+            file_obj = get_object_or_404(File, pk=pk)
+        else:
+            file_obj = get_object_or_404(File, pk=pk, user=request.user)
+            
+        file_path = os.path.join(settings.MEDIA_ROOT, file_obj.user.storage_path, file_obj.internal_name)
+
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        file_obj.delete()
+        return Response({"message": "Файл успешно удален"}, status=status.HTTP_204_NO_CONTENT)
+
+
+class FileDownloadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        if request.user.is_staff:
+            file_obj = get_object_or_404(File, pk=pk)
+        else:
+            file_obj = get_object_or_404(File, pk=pk, user=request.user)
+            
+        file_path = os.path.join(settings.MEDIA_ROOT, file_obj.user.storage_path, file_obj.internal_name)
+
+        if os.path.exists(file_path):
+            file_obj.last_download_date = timezone.now()
+            file_obj.save()
+
+            response = FileResponse(open(file_path, 'rb'))
+            response['Content-Disposition'] = f'attachment; filename="{file_obj.original_name}"'
+            return response
+
+        return Response({"error": "Файл не найден на сервере"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class AdminToggleAdminView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        
+        if user == request.user:
+            return Response({"error": "Нельзя изменить права самому себе"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user.is_staff = not user.is_staff
+        user.save()
+        return Response({
+            "message": f"Статус администратора для пользователя {user.username} изменен",
+            "is_staff": user.is_staff
+        }, status=status.HTTP_200_OK)
