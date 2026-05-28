@@ -11,14 +11,21 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 
 from .models import File
 from .serializers import UserSerializer, FileSerializer
 
 User = get_user_model()
 
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return  
+
 
 class RegisterView(APIView):
+    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
+    
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
@@ -28,6 +35,8 @@ class RegisterView(APIView):
 
 
 class LoginView(APIView):
+    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
+    
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
@@ -44,12 +53,15 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
+    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
+    
     def post(self, request):
         logout(request)
         return Response({"message": "Вы успешно вышли"}, status=status.HTTP_200_OK)
 
 
 class FileListCreateView(APIView):
+    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -95,6 +107,7 @@ class FileListCreateView(APIView):
 
 
 class FileDetailView(APIView):
+    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, pk):
@@ -188,6 +201,7 @@ class AdminUserListView(APIView):
 
 
 class AdminUserDeleteView(APIView):
+    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     permission_classes = [IsAdminUser]
 
     def delete(self, request, pk):
@@ -204,10 +218,14 @@ class AdminUserDeleteView(APIView):
 
 
 class FileShareLinkView(APIView):
+    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
-        file_obj = get_object_or_404(File, pk=pk, user=request.user)
+        if request.user.is_staff:
+            file_obj = get_object_or_404(File, pk=pk)
+        else:
+            file_obj = get_object_or_404(File, pk=pk, user=request.user)
 
         if not getattr(file_obj, 'share_hash', None):
             file_obj.share_hash = uuid.uuid4().hex
@@ -222,6 +240,7 @@ class FileShareLinkView(APIView):
 
 
 class AdminToggleAdminView(APIView):
+    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     permission_classes = [IsAdminUser]
 
     def patch(self, request, pk):
