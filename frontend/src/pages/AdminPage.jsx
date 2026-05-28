@@ -73,7 +73,7 @@ const AdminPage = () => {
               <td style={{ padding: '10px', border: '1px solid #ddd', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {/* Кнопка перехода к просмотру файлов пользователя */}
                 <button 
-                  onClick={() => navigate(`/dashboard?user_id=${user.id}`)}
+                  onClick={() => navigate(`/dashboard?user_id=${user.id}&username=${user.username}`)}
                   style={{ padding: '6px 12px', background: '#0066cc', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                 >
                   Просмотреть файлы

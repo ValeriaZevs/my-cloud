@@ -15,6 +15,7 @@ const DashboardPage = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const targetUserId = searchParams.get('user_id');
+  const targetUsername = searchParams.get('username');
 
   const username = useSelector((state) => state.auth.username);
   const isAdmin = useSelector((state) => state.auth.isAdmin); 
@@ -120,16 +121,17 @@ const DashboardPage = () => {
       </header>
 
       <main>
-        {/* Информационный баннер, который видит только админ в чужом хранилище */}
+        {/* Информационный баннер режима просмотра для администратора */}
         {targetUserId && isAdmin && (
           <div style={{ background: '#e0f7fa', padding: '15px', borderRadius: '5px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: '#006064', fontWeight: 'bold' }}>
-              ⚠️ Режим просмотра чужого хранилища (User ID: {targetUserId})
+              ⚠️ Режим просмотра хранилища пользователя: {targetUsername || `ID ${targetUserId}`}
             </span>
             <button 
               onClick={() => {
-                // Удаляем параметр user_id из адресной строки
+                // Полностью очищаем параметры администратора при возвращении
                 searchParams.delete('user_id');
+                searchParams.delete('username');
                 setSearchParams(searchParams);
               }}
               style={{ padding: '5px 10px', background: '#00838f', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
@@ -139,7 +141,7 @@ const DashboardPage = () => {
           </div>
         )}
 
-        {/* Форма загрузки (скрываем для чужого хранилища, чтобы админ случайно туда ничего не загрузил) */}
+        {/* Форма загрузки новых файлов (доступна только в своем облаке) */}
         {!targetUserId && (
           <div style={{ background: '#f5f5f5', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
             <h3 style={{ marginTop: 0 }}>Загрузить новый файл</h3>
@@ -152,8 +154,9 @@ const DashboardPage = () => {
           </div>
         )}
 
-        {/* Список файлов */}
-        <h3>{targetUserId ? 'Файлы пользователя:' : 'Ваши файлы:'}</h3>
+        {/* Динамический заголовок списка файлов */}
+        <h3>{targetUsername ? `Файлы пользователя ${targetUsername}:` : 'Ваши файлы:'}</h3>
+        
         {files.length === 0 ? (
           <p style={{ color: '#777' }}>Хранилище пусто.</p>
         ) : (
@@ -162,7 +165,7 @@ const DashboardPage = () => {
               <li key={file.id} style={{ padding: '15px', border: '1px solid #eee', borderRadius: '5px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                 <div style={{ flex: '1 1 300px' }}>
                   
-                  {/* Логика переименования */}
+                  {/* Логика изменения имени файла */}
                   {editingFileId === file.id ? (
                     <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                       <input 
@@ -182,7 +185,6 @@ const DashboardPage = () => {
                   </div>
                 </div>
 
-                {/* Блок с кнопками действий */}
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={() => handleDownload(file.id, file.original_name)} style={{ padding: '6px 12px', background: '#0066cc', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Скачать</button>
                   <button onClick={() => handleShare(file.id)} style={{ padding: '6px 12px', background: '#f39c12', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Поделиться</button>

@@ -7,12 +7,13 @@ const getCsrfToken = () => {
   return '';
 };
 
-export const getFiles = async () => {
-  const response = await fetch(`${API_URL}/files/`, {
-    method: 'GET',
-    credentials: 'include',
-  });
-  if (!response.ok) throw new Error('Ошибка при загрузке файлов');
+export const getFiles = async (userId = null) => {
+  const url = userId 
+    ? `http://194.67.92.55:8000/api/files/?user_id=${userId}`
+    : `http://194.67.92.55:8000/api/files/`;
+    
+  const response = await fetch(url, { credentials: 'include' });
+  if (!response.ok) throw new Error('Ошибка при получении списка файлов');
   return response.json();
 };
 
