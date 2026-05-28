@@ -23,7 +23,7 @@ services:
       sh -c "python manage.py migrate &&
              python manage.py runserver 0.0.0.0:8000"
     ports:
-      - "8000:8000"
+      - "8000:8000" 
     environment:
       - USE_POSTGRES=True
     depends_on:
@@ -31,16 +31,15 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - ./frontend/dist:/app/frontend_build
 
   frontend:
     image: node:18-alpine
     working_dir: /app
-    ports:
-      - "3000:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules  
-    command: sh -c "npm install && npm start"
+    command: sh -c "npm install && npm run build"
 
 volumes:
   postgres_data:
