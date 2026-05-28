@@ -209,18 +209,43 @@ class FileListCreateView(APIView):
     def get(self, request):
         user_id = request.query_params.get('user_id')
         
-        # Если запрашивает администратор и передан ID конкретного пользователя
         if request.user.is_staff and user_id:
             files = File.objects.filter(user_id=user_id)
         else:
-            # Обычный пользователь видит только свои файлы
             files = File.objects.filter(user=request.user)
             
         serializer = FileSerializer(files, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        pass
+        uploaded_file = request.FILES.get('file')
+        comment = request.data.get('comment', '')
+
+        if not uploaded_file:
+            return Response({"error": "Файл не предоставлен"}, status=status.HTTP_400_BAD_REQUEST)
+
+        ext = os.path.splitext(uploaded_file.name)[1]
+        internal_name = f"{uuid.uuid4().hex}{ext}"
+
+        user_folder = os.path.join(settings.MEDIA_ROOT, request.user.storage_path)
+        os.makedirs(user_folder, exist_ok=True)
+
+        file_path = os.path.join(user_folder, internal_name)
+
+        with open(file_path, 'wb+') as destination:
+            for chunk in uploaded_file.chunks():
+                destination.write(chunk)
+
+        file_record = File.objects.create(
+            user=request.user,
+            original_name=uploaded_file.name,
+            internal_name=internal_name,
+            size=uploaded_file.size,
+            comment=comment
+        )
+
+        serializer = FileSerializer(file_record)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class FileDetailView(APIView):
