@@ -145,4 +145,94 @@ class FileDownloadView(APIView):
             response['Content-Disposition'] = f'attachment; filename="{file_obj.original_name}"'
             return response
 
-        return Response({"error": "Файл не найден на сервере"},
+        return Response({"error": "Файл не найден на сервере"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class FileShareDownloadView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, share_hash):
+        file_obj = get_object_or_404(File, share_hash=share_hash)
+        file_path = os.path.join(settings.MEDIA_ROOT, file_obj.user.storage_path, file_obj.internal_name)
+
+        if os.path.exists(file_path):
+            file_obj.last_download_date = timezone.now()
+            file_obj.save()
+
+            response = FileResponse(open(file_path, 'rb'))
+            response['Content-Disposition'] = f'attachment; filename="{file_obj.original_name}"'
+            return response
+
+        return Response({"error": "Файл не найден"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class AdminUserListView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        users = User.objects.annotate(
+            file_count=Count('files'),
+            total_size=Sum('files__size')
+        )
+        data = []
+        for u in users:
+            data.append({
+                'id': u.id,
+                'username': u.username,
+                'email': u.email,
+                'is_staff': u.is_staff,
+                'file_count': u.file_count or 0,
+                'total_size': u.total_size or 0,
+            })
+        return Response(data)
+
+
+class AdminUserDeleteView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def delete(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+
+        if user == request.user:
+            return Response({"error": "Нельзя удалить самого себя"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user.is_staff:
+            return Response({"error": "Нельзя удалить администратора"}, status=status.HTTP_403_FORBIDDEN)
+
+        user.delete()
+        return Response({"message": "Пользователь удален"}, status=status.HTTP_204_NO_CONTENT)
+
+
+class FileShareLinkView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        file_obj = get_object_or_404(File, pk=pk, user=request.user)
+
+        if not getattr(file_obj, 'share_hash', None):
+            file_obj.share_hash = uuid.uuid4().hex
+            file_obj.save()
+
+        share_url = f"http://194.67.92.55:8000/api/files/share/{file_obj.share_hash}/"
+
+        return Response({
+            "url": share_url,
+            "share_hash": file_obj.share_hash
+        }, status=status.HTTP_200_OK)
+
+
+class AdminToggleAdminView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        
+        if user == request.user:
+            return Response({"error": "Нельзя изменить права самому себе"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user.is_staff = not user.is_staff
+        user.save()
+        return Response({
+            "message": f"Статус администратора для пользователя {user.username} изменен",
+            "is_staff": user.is_staff
+        }, status=status.HTTP_200_OK)
