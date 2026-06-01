@@ -15,6 +15,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import File
 from .serializers import UserSerializer, FileSerializer
+from urllib.parse import quote
 
 User = get_user_model()
 
@@ -157,7 +158,8 @@ class FileDownloadView(APIView):
             file_obj.save()
 
             response = FileResponse(open(file_path, 'rb'))
-            response['Content-Disposition'] = f'attachment; filename="{file_obj.original_name}"'
+            encoded_filename = quote(file_obj.original_name)
+            response['Content-Disposition'] = f"attachment; filename*=UTF-8''{encoded_filename}"
             return response
 
         return Response({"error": "Файл не найден на сервере"}, status=status.HTTP_404_NOT_FOUND)
@@ -175,7 +177,8 @@ class FileShareDownloadView(APIView):
             file_obj.save()
 
             response = FileResponse(open(file_path, 'rb'))
-            response['Content-Disposition'] = f'attachment; filename="{file_obj.original_name}"'
+            encoded_filename = quote(file_obj.original_name)
+            response['Content-Disposition'] = f"attachment; filename*=UTF-8''{encoded_filename}"
             return response
 
         return Response({"error": "Файл не найден"}, status=status.HTTP_404_NOT_FOUND)
