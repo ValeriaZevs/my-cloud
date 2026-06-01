@@ -4,28 +4,24 @@ from django.conf import settings
 from django.utils import timezone
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
-from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.contrib.auth import authenticate, get_user_model
 from django.db.models import Count, Sum
 
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import File
 from .serializers import UserSerializer, FileSerializer
 
 User = get_user_model()
 
-class CsrfExemptSessionAuthentication(SessionAuthentication):
-    def enforce_csrf(self, request):
-        return  
-
 
 class RegisterView(APIView):
-    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
-    
+    permission_classes = [AllowAny]
+
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
@@ -35,43 +31,50 @@ class RegisterView(APIView):
 
 
 class LoginView(APIView):
-    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
-    
+    permission_classes = [AllowAny]
+
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            login(request, user)
+            refresh = RefreshToken.for_user(user)
             return Response({
                 "message": "Успешный вход",
                 "is_staff": user.is_staff,
-                "username": user.username
+                "username": user.username,
+                "access": str(refresh.access_token),
+                "refresh": str(refresh)
             }, status=status.HTTP_200_OK)
+
         return Response({"error": "Неверный логин или пароль"}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 class LogoutView(APIView):
-    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
-    
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
-        logout(request)
-        return Response({"message": "Вы успешно вышли"}, status=status.HTTP_200_OK)
+        try:
+            refresh_token = request.data.get("refresh")
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({"message": "Вы успешно вышли"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": "Недействительный токен"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class FileListCreateView(APIView):
-    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user_id = request.query_params.get('user_id')
-        
+
         if request.user.is_staff and user_id:
             files = File.objects.filter(user_id=user_id)
         else:
             files = File.objects.filter(user=request.user)
-            
+
         serializer = FileSerializer(files, many=True)
         return Response(serializer.data)
 
@@ -107,7 +110,6 @@ class FileListCreateView(APIView):
 
 
 class FileDetailView(APIView):
-    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, pk):
@@ -129,7 +131,7 @@ class FileDetailView(APIView):
             file_obj = get_object_or_404(File, pk=pk)
         else:
             file_obj = get_object_or_404(File, pk=pk, user=request.user)
-            
+
         file_path = os.path.join(settings.MEDIA_ROOT, file_obj.user.storage_path, file_obj.internal_name)
 
         if os.path.exists(file_path):
@@ -147,7 +149,7 @@ class FileDownloadView(APIView):
             file_obj = get_object_or_404(File, pk=pk)
         else:
             file_obj = get_object_or_404(File, pk=pk, user=request.user)
-            
+
         file_path = os.path.join(settings.MEDIA_ROOT, file_obj.user.storage_path, file_obj.internal_name)
 
         if os.path.exists(file_path):
@@ -201,7 +203,6 @@ class AdminUserListView(APIView):
 
 
 class AdminUserDeleteView(APIView):
-    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     permission_classes = [IsAdminUser]
 
     def delete(self, request, pk):
@@ -218,7 +219,6 @@ class AdminUserDeleteView(APIView):
 
 
 class FileShareLinkView(APIView):
-    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
@@ -231,7 +231,8 @@ class FileShareLinkView(APIView):
             file_obj.share_hash = uuid.uuid4().hex
             file_obj.save()
 
-        share_url = f"http://194.67.92.55:8000/api/files/share/{file_obj.share_hash}/"
+        relative_url = f"/api/files/share/{file_obj.share_hash}/"
+        share_url = request.build_absolute_uri(relative_url)
 
         return Response({
             "url": share_url,
@@ -240,15 +241,14 @@ class FileShareLinkView(APIView):
 
 
 class AdminToggleAdminView(APIView):
-    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     permission_classes = [IsAdminUser]
 
     def patch(self, request, pk):
         user = get_object_or_404(User, pk=pk)
-        
+
         if user == request.user:
             return Response({"error": "Нельзя изменить права самому себе"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         user.is_staff = not user.is_staff
         user.save()
         return Response({

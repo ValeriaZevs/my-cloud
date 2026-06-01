@@ -1,29 +1,32 @@
-const API_URL = "http://194.67.92.55:8000/api"
-
-const getCsrfToken = () => {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; csrftoken=`);
-  if (parts.length === 2) return parts.pop().split(';').shift();
-  return '';
-};
+const API_URL = "/api";
 
 export const getFiles = async (userId = null) => {
-  const url = userId 
-    ? `http://194.67.92.55:8000/api/files/?user_id=${userId}`
-    : `http://194.67.92.55:8000/api/files/`;
-    
-  const response = await fetch(url, { credentials: 'include' });
+  const url = userId
+    ? `${API_URL}/files/?user_id=${userId}`
+    : `${API_URL}/files/`;
+
+  const response = await fetch(url);
   if (!response.ok) throw new Error('Ошибка при получении списка файлов');
   return response.json();
 };
 
 export const logoutUser = async () => {
-  const response = await fetch(`${API_URL}/logout/`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'X-CSRFToken': getCsrfToken() },
-  });
-  return response.json();
+  const refresh = localStorage.getItem('refresh');
+
+  if (refresh) {
+    try {
+      await fetch(`${API_URL}/logout/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh })
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  localStorage.removeItem('access');
+  localStorage.removeItem('refresh');
 };
 
 export const uploadFile = async (file, comment) => {
@@ -35,11 +38,9 @@ export const uploadFile = async (file, comment) => {
 
   const response = await fetch(`${API_URL}/files/`, {
     method: 'POST',
-    credentials: 'include',
-    headers: { 'X-CSRFToken': getCsrfToken() },
     body: formData,
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json();
     throw new Error(errorData.error || 'Ошибка при загрузке');
@@ -50,8 +51,6 @@ export const uploadFile = async (file, comment) => {
 export const deleteFile = async (fileId) => {
   const response = await fetch(`${API_URL}/files/${fileId}/`, {
     method: 'DELETE',
-    credentials: 'include',
-    headers: { 'X-CSRFToken': getCsrfToken() },
   });
   if (!response.ok) throw new Error('Ошибка при удалении файла');
   return true;
@@ -60,14 +59,12 @@ export const deleteFile = async (fileId) => {
 export const updateFile = async (fileId, data) => {
   const response = await fetch(`${API_URL}/files/${fileId}/`, {
     method: 'PATCH',
-    headers: { 
-      'Content-Type': 'application/json',
-      'X-CSRFToken': getCsrfToken()
+    headers: {
+      'Content-Type': 'application/json'
     },
-    credentials: 'include',
     body: JSON.stringify(data),
   });
-  
+
   if (!response.ok) throw new Error('Ошибка при обновлении файла');
   return response.json();
 };
@@ -75,37 +72,32 @@ export const updateFile = async (fileId, data) => {
 export const getShareLink = async (fileId) => {
   const response = await fetch(`${API_URL}/files/${fileId}/share/`, {
     method: 'GET',
-    credentials: 'include',
   });
-  
+
   if (!response.ok) throw new Error('Ошибка при генерации ссылки');
   return response.json();
 };
 
 export const getAdminUsers = async () => {
-  const response = await fetch('http://194.67.92.55:8000/api/admin/users/', {
-    credentials: 'include'
-  });
+  const response = await fetch(`${API_URL}/admin/users/`);
   if (!response.ok) throw new Error('Ошибка при получении списка пользователей');
   return response.json();
 };
 
 export const deleteUser = async (id) => {
-  const response = await fetch(`http://194.67.92.55:8000/api/admin/users/${id}/`, {
+  const response = await fetch(`${API_URL}/admin/users/${id}/`, {
     method: 'DELETE',
-    credentials: 'include'
   });
   if (!response.ok) throw new Error('Ошибка при удалении пользователя');
-  return true; 
+  return true;
 };
 
 export const toggleAdminStatus = async (userId) => {
-  const response = await fetch(`http://194.67.92.55:8000/api/admin/users/${userId}/toggle_admin/`, {
+  const response = await fetch(`${API_URL}/admin/users/${userId}/toggle_admin/`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
-    credentials: 'include'
   });
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

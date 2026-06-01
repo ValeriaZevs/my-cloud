@@ -32,6 +32,8 @@ INSTALLED_APPS = [
     'storage',
     'rest_framework',
     'corsheaders',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [
@@ -73,7 +75,7 @@ if os.environ.get('USE_POSTGRES') == 'True':
             'NAME': 'mycloud_db',
             'USER': 'mycloud_user',
             'PASSWORD': 'mycloud_password',
-            'HOST': 'db',   # Имя контейнера базы данных в Docker
+            'HOST': 'db',
             'PORT': '5432',
         }
     }
@@ -144,4 +146,19 @@ LOGGING = {
         'handlers': ['console'],
         'level': 'INFO',  
     },
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
+
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
